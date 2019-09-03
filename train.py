@@ -14,7 +14,26 @@ from albumentations import (Normalize, Resize, Compose)
 from catalyst.dl import MetricCallback
 from catalyst.contrib.schedulers import ReduceLROnPlateau
 from catalyst.dl.runner import SupervisedRunner
-from catalyst.dl.callbacks import EarlyStoppingCallback, AUCCallback, F1ScoreCallback
+from catalyst.dl.callbacks import EarlyStoppingCallback
+
+
+def crop_image_from_gray(img, tol=7):
+    if img.ndim == 2:
+        mask = img > tol
+        return img[np.ix_(mask.any(1), mask.any(0))]
+    elif img.ndim == 3:
+        gray_img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+        mask = gray_img > tol
+
+        check_shape = img[:, :, 0][np.ix_(mask.any(1), mask.any(0))].shape[0]
+        if check_shape == 0:  # image is too dark so that we crop out everything,
+            return img  # return original image
+        else:
+            img1 = img[:, :, 0][np.ix_(mask.any(1), mask.any(0))]
+            img2 = img[:, :, 1][np.ix_(mask.any(1), mask.any(0))]
+            img3 = img[:, :, 2][np.ix_(mask.any(1), mask.any(0))]
+            img = np.stack([img1, img2, img3], axis=-1)
+        return img
 
 
 def weighted_kappa(
@@ -200,6 +219,7 @@ class EyesDataset(Dataset):
 
     def __getitem__(self, index):
         image = cv2.imread(os.path.join(self.dataset_path, self.names[index]))[..., :: -1]
+        image = crop_image_from_gray(image)
         if self.augmentations:
             augmented = self.augmentations(image=image)
             image = augmented['image']
@@ -208,7 +228,8 @@ class EyesDataset(Dataset):
 
 
 def aug_train(resolution, p=1):
-    return Compose([Resize(resolution, resolution),Normalize()], p=p)
+    return Compose([Resize(resolution, resolution),
+                    Normalize()], p=p)
 
 
 def aug_val(resolution, p=1):
@@ -224,7 +245,7 @@ if __name__ == '__main__':
     train = pd.read_csv('data/splited_train.csv')
     X = train['id'].values
     train = train.drop(columns='id')
-    X_train, X_val, y_train, y_val = train_test_split(X, train.values.tolist(), random_state=42)
+    X_train, X_val, y_train, y_val = train_test_split(X, train.values.tolist(), test_size=0.2, random_state=42)
 
     model = models.resnet50(pretrained=True)
     model.fc = nn.Linear(2048, num_classes)
@@ -254,7 +275,7 @@ if __name__ == '__main__':
     loaders["train"] = train_loader
     loaders["valid"] = val_loader
     runner = SupervisedRunner()
-    logdir = f"logs/baseline"
+    logdir = f"logs/baseline_crop_from_gray"
 
     for p in model.parameters():
         p.requires_grad = True
@@ -272,6 +293,7 @@ if __name__ == '__main__':
         callbacks=[
             KappScoreMetricCallback(),
             F1Callback(),
+            # RocAucCallback(),
             EarlyStoppingCallback(patience=25, metric='loss')
         ],
         num_epochs=num_epochs,
