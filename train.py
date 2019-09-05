@@ -61,16 +61,16 @@ if __name__ == '__main__':
 					ids=data.loc[splits['train_idx'][fold_idx],'id'].values, 
 					albumentations_tr=aug_train_heavy(image_size)) 
 	val_dataset = EyeDataset(dataset_path=valid_path, 
-					labels=data.loc[splits['train_idx'][fold_idx],labels].values, 
-					ids=data.loc[splits['train_idx'][fold_idx],'id'].values, 
+					labels=data.loc[splits['test_idx'][fold_idx],labels].values, 
+					ids=data.loc[splits['test_idx'][fold_idx],'id'].values, 
 					albumentations_tr=aug_val(image_size))
 	train_loader =  DataLoader(train_dataset,
-					num_workers=4,
+					num_workers=8,
 					pin_memory=False,
 					batch_size=batch_size,
 					shuffle=True)
 	val_loader =  DataLoader(val_dataset,
-					num_workers=4,
+					num_workers=8,
 					pin_memory=False,
 					batch_size=batch_size,
 					shuffle=True)	
@@ -114,3 +114,4 @@ if __name__ == '__main__':
 				],
 			num_epochs=full_n_epochs,
 			verbose=True)    	
+        #del model
