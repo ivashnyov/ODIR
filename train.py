@@ -93,6 +93,7 @@ if __name__ == '__main__':
 			logdir=logdir,
 			scheduler=scheduler,
 			callbacks=[
+                            F1ScoreCallback(), MixupCallback()
 				],
 			num_epochs=head_n_epochs,
 			verbose=True)      
@@ -101,7 +102,7 @@ if __name__ == '__main__':
 		p.requires_grad = True
 	optimizer = torch.optim.Adam(model.parameters(), lr=full_lr)
 	criterion = nn.CrossEntropyLoss()
-	scheduler = ReduceLROnPlateau(optimizer=optimizer, factor=0.75, patience=2)
+	scheduler = ReduceLROnPlateau(optimizer=optimizer, factor=0.5, patience=5)
 	runner.train(model=model,
 			criterion=criterion,
 			optimizer=optimizer,
@@ -109,6 +110,7 @@ if __name__ == '__main__':
 			logdir=logdir,
 			scheduler=scheduler,
 			callbacks=[
+                            F1ScoreCallback(), MixupCallback()
 				],
 			num_epochs=full_n_epochs,
 			verbose=True)    	

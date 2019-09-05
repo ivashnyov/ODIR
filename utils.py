@@ -34,7 +34,7 @@ def crop_image_from_gray(img, tol=7):
         return img
 
 def arguments(fold_idx, batch_size, model_name, image_size, head_n_epochs, head_lr, full_n_epochs, full_lr, exp_name):
-	print('Will run with the following arguments: \n fold_idx : {}, model_name : {}, batch_size : {} \n image_size : {}, head_n_epochs : {}, head_lr : {}, full_n_epochs : {}, full_lr : {}, exp_name : {}'.format(fold_idx, batch_size, model_name, image_size, head_n_epochs, head_lr, full_n_epochs, full_lr, exp_name))
+	print('Will run with the following arguments: \n fold_idx : {}, model_name : {}, batch_size : {} \n image_size : {}, head_n_epochs : {}, head_lr : {}, full_n_epochs : {}, full_lr : {}, exp_name : {}'.format(fold_idx, model_name, batch_size, image_size, head_n_epochs, head_lr, full_n_epochs, full_lr, exp_name))
 	return(fold_idx, batch_size, model_name, image_size, head_n_epochs, head_lr, full_n_epochs, full_lr, exp_name)
 
 def prepare_model(model_name, n_classes):
@@ -73,7 +73,8 @@ class EyeDataset(Dataset):
             augmented = self.albumentations_tr(image=image)
             image = augmented['image']
         target = np.argmax(self.labels[index])
-        return torch.from_numpy(image.transpose((2, 0, 1))).float(), torch.tensor(np.expand_dims(target,0)).long()
+        #return torch.from_numpy(image.transpose((2, 0, 1))).float(), torch.tensor(np.expand_dims(target,0)).long()
+        return torch.from_numpy(image.transpose((2, 0, 1))).float(), torch.tensor(target).long()
 
 def aug_train(resolution,p=1): 
     return Compose([Resize(resolution,resolution),
