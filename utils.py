@@ -42,7 +42,7 @@ def arguments(fold_idx, batch_size, model_name, image_size, head_n_epochs, head_
 	return(fold_idx, batch_size, model_name, image_size, head_n_epochs, head_lr, full_n_epochs, full_lr, exp_name)
 
 def prepare_model(model_name, n_classes):
-	print('Will load {}'.format(model_name))
+	print('Will load {} with {} classes'.format(model_name, n_classes))
 	model = EfficientNet.from_pretrained(model_name)
 	in_features = model._fc.in_features
 	model._fc = nn.Linear(in_features, n_classes)
@@ -140,6 +140,9 @@ def run_validation(data, valid_path, image_size, batch_size, splits, fold_idx, m
     loaders["valid"] = val_loader
     predictions = runner.predict_loader(loaders["valid"], resume=f"{logdir}/checkpoints/best.pth")   
     probabilities = softmax(torch.from_numpy(predictions),dim=1).numpy()
+    for idx in range(probabilities.shape[0]):
+        if all(probabilities[idx,:]<0.5):
+            probabilities[idx,0] = 1.0
     predicted_labels = pd.DataFrame(probabilities, columns=labels)
     predicted_labels['id'] = data.loc[splits['test_idx'][fold_idx],'id'].values
     predicted_labels.loc[:,'group'] = predicted_labels.id.apply(lambda x: x.split('_')[0])   

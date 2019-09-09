@@ -83,6 +83,9 @@ if __name__ == '__main__':
         runner = SupervisedRunner(model=model)   
         predictions = runner.predict_loader(loaders["valid"], resume=f"{logdir}/checkpoints/best.pth")   
         probabilities = softmax(torch.from_numpy(predictions),dim=1).numpy()    
+        for idx in range(probabilities.shape[0]):
+            if all(probabilities[idx,:]<0.5):
+                probabilities[idx,0] = 1.0
         probabilities_list.append(probabilities)
     probabilities_combined = np.stack(probabilities_list,axis=0).mean(axis=0) 
     predicted_labels = pd.DataFrame(probabilities_combined, columns=labels)

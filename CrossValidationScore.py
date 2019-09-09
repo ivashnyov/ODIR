@@ -58,6 +58,7 @@ if __name__=='__main__':
     valid_path = './ODIR-5K_Training_Dataset/'
     model = prepare_model(model_name, n_classes)
     model.cuda()
+    model.eval()
     for fold_idx in range(len(splits['test_idx'])):
         valid_data_groupped, predicted_labels_groupped = run_validation(data, valid_path, image_size, batch_size, splits, fold_idx, model, exp_name, labels)
         kappa, f1, auc, final_score = ODIR_Metrics(valid_data_groupped.loc[:,labels].values, 
