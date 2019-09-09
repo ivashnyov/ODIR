@@ -37,7 +37,7 @@ from albumentations import (
 from catalyst.contrib.schedulers import OneCycleLR, ReduceLROnPlateau, StepLR, MultiStepLR
 from catalyst.dl.experiment import SupervisedExperiment
 from catalyst.dl.runner import SupervisedRunner
-from catalyst.dl.callbacks import EarlyStoppingCallback, AccuracyCallback, F1ScoreCallback, ConfusionMatrixCallback, MixupCallback
+from catalyst.dl.callbacks import EarlyStoppingCallback, AccuracyCallback, F1ScoreCallback, ConfusionMatrixCallback, MixupCallback, InferCallback
 from catalyst.dl.core.state import RunnerState
 from catalyst.dl.core import MetricCallback
 from catalyst.dl.callbacks import CriterionCallback
@@ -45,6 +45,7 @@ from efficientnet_pytorch import EfficientNet
 from torch.nn.functional import softmax
 from utils import *
 from odir_submit import *
+from pytorch_toolbelt.inference import tta
 if __name__=='__main__':
     splits = pickle.load(open('cv_split.pickle', 'rb'))
     data = pd.read_csv('./data/splited_train.csv')
@@ -60,7 +61,7 @@ if __name__=='__main__':
     model.cuda()
     model.eval()
     for fold_idx in range(len(splits['test_idx'])):
-        valid_data_groupped, predicted_labels_groupped = run_validation(data, valid_path, image_size, batch_size, splits, fold_idx, model, exp_name, labels)
+        valid_data_groupped, predicted_labels_groupped = run_validation(data, valid_path, image_size, batch_size, splits, fold_idx, model, exp_name, labels, 'd4')
         kappa, f1, auc, final_score = ODIR_Metrics(valid_data_groupped.loc[:,labels].values, 
                                                    predicted_labels_groupped.loc[:,labels].values)
         print("Fold ", fold_idx, " kappa score:", kappa, " f-1 score:", f1, " AUC vlaue:", auc, " Final Score:", final_score)        

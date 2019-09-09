@@ -15,10 +15,12 @@ from albumentations import (
     IAASharpen, IAAEmboss, Flip, OneOf, Compose
 )
 from catalyst.dl.runner import SupervisedRunner
+from catalyst.dl.callbacks import InferCallback 
 import collections
 from torch.utils.data import Dataset, DataLoader
 from efficientnet_pytorch import EfficientNet
 from torch.nn.functional import softmax
+from pytorch_toolbelt.inference import tta
 def crop_image_from_gray(img, tol=7):
     if img.ndim == 2:
         mask = img > tol
@@ -121,11 +123,15 @@ def aug_train_heavy(resolution, p=1.0):
 def aug_val(resolution,p=1): 
     return Compose([Resize(resolution,resolution),Normalize()], p=p)
 
-def run_validation(data, valid_path, image_size, batch_size, splits, fold_idx, model, exp_name, labels):
+def run_validation(data, valid_path, image_size, batch_size, splits, fold_idx, model, exp_name, labels, ttatype=None):
     logdir = 'logs/{}_fold{}/'.format(exp_name, fold_idx)
     valid_data = data.loc[splits['test_idx'][fold_idx],:]
     model.load_state_dict(torch.load(os.path.join(logdir,'checkpoints/best.pth'))['model_state_dict'])
     model.eval()    
+    if ttatype=='d4':
+        model = tta.TTAWrapper(model, tta.d4_image2label)
+    elif ttatype=='fliplr_image2label':
+        model = tta.TTAWrapper(model, tta.d4_image2label)
     runner = SupervisedRunner(model=model)
     val_dataset = EyeDataset(dataset_path=valid_path, 
                          labels=data.loc[splits['test_idx'][fold_idx],labels].values, 
@@ -138,7 +144,9 @@ def run_validation(data, valid_path, image_size, batch_size, splits, fold_idx, m
                          shuffle=False)  
     loaders = collections.OrderedDict()
     loaders["valid"] = val_loader
-    predictions = runner.predict_loader(loaders["valid"], resume=f"{logdir}/checkpoints/best.pth")   
+    #predictions = runner.predict_loader(loaders["valid"], resume=f"{logdir}/checkpoints/best.pth") 
+    runner.infer(model=model,loaders=loaders,callbacks=[InferCallback()])
+    predictions = runner.callbacks[0].predictions['logits']
     probabilities = softmax(torch.from_numpy(predictions),dim=1).numpy()
     for idx in range(probabilities.shape[0]):
         if all(probabilities[idx,:]<0.5):

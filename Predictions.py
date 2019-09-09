@@ -45,7 +45,7 @@ from efficientnet_pytorch import EfficientNet
 from torch.nn.functional import softmax
 from utils import *
 from odir_submit import *
-
+from pytorch_toolbelt.inference import tta
 if __name__ == '__main__':
     splits = pickle.load(open('cv_split.pickle', 'rb'))
     labels  = ['N','D','G','C','A','H','M','O']
@@ -73,15 +73,22 @@ if __name__ == '__main__':
     loaders = collections.OrderedDict()
     loaders["valid"] = test_loader    
     probabilities_list = []
+    ttatype='d4'
     for fold_idx in range(len(splits['test_idx'])):
         print('Getting predictions from fold {}'.format(fold_idx))
         logdir = 'logs/{}_fold{}/'.format(exp_name, fold_idx)    
         model = prepare_model(model_name, n_classes)
         model.cuda()
         model.load_state_dict(torch.load(os.path.join(logdir,'checkpoints/best.pth'))['model_state_dict'])
-        model.eval()    
+        model.eval()   
+        if ttatype=='d4':
+            model = tta.TTAWrapper(model, tta.d4_image2label)
+        elif ttatype=='fliplr_image2label':
+            model = tta.TTAWrapper(model, tta.d4_image2label)
         runner = SupervisedRunner(model=model)   
-        predictions = runner.predict_loader(loaders["valid"], resume=f"{logdir}/checkpoints/best.pth")   
+        #predictions = runner.predict_loader(loaders["valid"], resume=f"{logdir}/checkpoints/best.pth")
+        runner.infer(model=model,loaders=loaders,callbacks=[InferCallback()])
+        predictions = runner.callbacks[0].predictions['logits']
         probabilities = softmax(torch.from_numpy(predictions),dim=1).numpy()    
         for idx in range(probabilities.shape[0]):
             if all(probabilities[idx,:]<0.5):
